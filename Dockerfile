@@ -1,23 +1,27 @@
-FROM golang:1.22.5 as go
+FROM golang:1.24.2 AS go
+
+ARG TARGETOS
+ARG TARGETARCH
+
 ENV GO111MODULE=on
 ENV CGO_ENABLED=0
 ENV GOBIN=/bin
-RUN go install github.com/go-delve/delve/cmd/dlv@v1.8.2
+RUN GOOS=${TARGETOS} GOARCH=${TARGETARCH} go install github.com/go-delve/delve/cmd/dlv@v1.8.2
 
-FROM go as build
+FROM go AS build
 WORKDIR /build
 COPY go.mod go.sum ./
 COPY pkg ./pkg
-RUN go build ./pkg/imports
+RUN GOOS=${TARGETOS} GOARCH=${TARGETARCH} go build ./pkg/imports
 COPY . .
-RUN go build -o /bin/exclude-prefixes .
+RUN GOOS=${TARGETOS} GOARCH=${TARGETARCH} go build -o /bin/exclude-prefixes .
 
-FROM build as test
+FROM build AS test
 CMD go test -test.v ./...
 
-FROM test as debug
+FROM test AS debug
 CMD dlv -l :40000 --headless=true --api-version=2 test -test.v ./...
 
-FROM alpine:3.20.1 as runtime
+FROM alpine:3.21.3 AS runtime
 COPY --from=build /bin/exclude-prefixes /bin/exclude-prefixes
 ENTRYPOINT ["/bin/exclude-prefixes"]
