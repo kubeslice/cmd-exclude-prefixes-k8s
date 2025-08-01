@@ -1,23 +1,25 @@
-FROM golang:1.22.5 as go
+FROM golang:1.22.5 AS go
 ENV GO111MODULE=on
 ENV CGO_ENABLED=0
 ENV GOBIN=/bin
 RUN go install github.com/go-delve/delve/cmd/dlv@v1.8.2
 
-FROM go as build
+FROM go AS build
+ARG TARGETOS
+ARG TARGETARCH
 WORKDIR /build
 COPY go.mod go.sum ./
-COPY pkg ./pkg
-RUN go build ./pkg/imports
+RUN go mod download
 COPY . .
-RUN go build -o /bin/exclude-prefixes .
+RUN CGO_ENABLED=0 GOOS=${TARGETOS} GOARCH=${TARGETARCH} go build -o /bin/exclude-prefixes .
 
-FROM build as test
+FROM build AS test
 CMD go test -test.v ./...
 
-FROM test as debug
+FROM test AS debug
 CMD dlv -l :40000 --headless=true --api-version=2 test -test.v ./...
 
-FROM alpine:3.20.1 as runtime
+FROM gcr.io/distroless/static-debian12:nonroot as runtime
 COPY --from=build /bin/exclude-prefixes /bin/exclude-prefixes
+USER 65532:65532
 ENTRYPOINT ["/bin/exclude-prefixes"]
