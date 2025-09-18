@@ -106,6 +106,9 @@ func watchServiceIPAddr(ctx context.Context, cs kubernetes.Interface) (<-chan []
 			return nil, err
 		}
 		ipAddr := service.Spec.ClusterIP
+		if ipAddr == "" || ipAddr == "None" {
+			return nil, errors.New("Invalid service IP: empty or None")
+		}
 		return ipToNet(net.ParseIP(ipAddr)), nil
 	}
 
