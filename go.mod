@@ -1,6 +1,6 @@
 module cmd-exclude-prefixes-k8s
 
-go 1.18
+go 1.24
 
 require (
 	github.com/fsnotify/fsnotify v1.4.9
